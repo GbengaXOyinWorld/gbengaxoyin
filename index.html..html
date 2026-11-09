@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#555963">
+<title>GbengaXOyin — Our Little Game World</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--wine:#555963;--rose:#cf7899;--pink:#f4dce6;--cream:#f3f4f6;--ink:#343740;--muted:#777c87;--gold:#c69a59}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 5%,#f5e2eb,transparent 35%),linear-gradient(135deg,#eef0f3,#fafafb);font-family:ui-rounded,"Avenir Next",system-ui,sans-serif;color:var(--ink);min-height:100vh}
+.wrap{max-width:760px;margin:auto;padding:24px 16px 48px}.brand{text-align:center;margin:12px 0 24px}.heart{font-size:28px;color:var(--rose)}h1{font-family:Georgia,serif;font-weight:500;font-size:42px;letter-spacing:.02em;margin:3px 0;color:var(--wine)}.tag{color:var(--muted);font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+.panel{background:#ffffffd9;border:1px solid #e0e2e7;border-radius:24px;padding:22px;box-shadow:0 14px 40px #55596312;margin:14px 0}
+h2{font:500 25px Georgia,serif;color:var(--wine);margin:0 0 8px}.sub{color:var(--muted);font-size:14px;line-height:1.5}
+label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:14px 0 6px}
+input{width:100%;padding:14px;border:1px solid #dfe1e6;border-radius:13px;font:inherit;background:#fffdfc;color:var(--ink);outline:none}input:focus{border-color:var(--rose);box-shadow:0 0 0 3px #cf78991c}
+button{border:0;border-radius:999px;padding:13px 18px;font:600 14px inherit;cursor:pointer;transition:.15s}button:active{transform:scale(.98)}.primary{background:var(--wine);color:white}.secondary{background:var(--pink);color:var(--wine)}.ghost{background:transparent;color:var(--wine);border:1px solid #dfe1e6}.wide{width:100%;margin-top:14px}.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+.hidden{display:none!important}.code{font:700 28px ui-monospace,monospace;letter-spacing:.2em;color:var(--wine);background:#f2e5eb;padding:10px 18px;border-radius:12px;display:inline-block}
+.pills{display:flex;gap:8px;overflow:auto;padding:6px 0 12px}.pill{white-space:nowrap;background:#f0e7ec;color:var(--wine);padding:10px 14px}.pill.active{background:var(--wine);color:white}
+.status{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#70a987;margin-right:6px}
+.question{background:linear-gradient(145deg,#f8f8fa,#f5e8ee);border:1px solid #e1e2e7;border-radius:22px;padding:28px 22px;text-align:center;min-height:190px;display:flex;flex-direction:column;justify-content:center;margin:14px 0}.q-label{font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--rose)}.q-text{font:500 25px/1.35 Georgia,serif;margin:15px 0;color:var(--wine)}
+.scoregrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.score{background:#f7f7f9;border:1px solid #e1e2e7;border-radius:16px;padding:13px;text-align:center}.score strong{display:block;font:24px Georgia,serif;color:var(--wine)}.score small{color:var(--muted)}
+.notice{background:#fff4df;border-radius:12px;padding:12px;color:#795b2e;font-size:13px;line-height:1.5;margin-top:12px}
+footer{text-align:center;color:#a18a93;font-size:12px;margin-top:28px}
+@media(max-width:520px){.wrap{padding:18px 12px 36px}h1{font-size:36px}.panel{padding:18px}.q-text{font-size:22px}.row{flex-direction:column}}
+</style></head>
+<body><main class="wrap">
+<header class="brand"><div class="heart">♥</div><h1>GbengaXOyin</h1><div class="tag">Our Little Game World</div></header>
+
+<section id="setup" class="panel">
+<h2>Make a little room for us</h2><p class="sub">Choose your name, create a private room, then send the room code to your favourite person.</p>
+<label for="name">Your name</label><input id="name" maxlength="20" placeholder="e.g. Dee">
+<div class="row"><button class="primary" id="createBtn">Create a room</button><button class="secondary" id="joinToggle">Join a room</button></div>
+<div id="joinArea" class="hidden"><label for="roomInput">Room code</label><input id="roomInput" maxlength="6" placeholder="6-letter code" autocapitalize="characters"><button class="primary wide" id="joinBtn">Join our room</button></div>
+<div class="notice">This is a private-by-code room, not an account-based service. Only share your code with the person you want to play with.</div>
+</section>
+
+<section id="game" class="hidden">
+<div class="panel">
+<div class="status"><span><span class="dot"></span><span id="connection">Connecting…</span></span><span>ROOM <strong id="roomLabel"></strong></span></div>
+<div style="text-align:center;margin:15px 0 10px"><div class="sub">Your room code</div><div class="code" id="bigCode"></div><button class="ghost" id="copyBtn" style="margin-left:8px">Copy</button></div>
+<div class="scoregrid"><div class="score"><small id="p1Name">Player 1</small><strong id="p1Score">0</strong></div><div class="score"><small id="p2Name">Waiting for partner</small><strong id="p2Score">0</strong></div></div>
+<p class="sub" id="turnText" style="text-align:center;margin:13px 0 0">Waiting for your partner to join…</p>
+</div>
+<div class="panel">
+<h2>Choose your mood</h2><div class="pills" id="categories"></div>
+<div class="question"><div class="q-label" id="qCategory">FUNNY CHAOS</div><div class="q-text" id="question">Your first question is waiting…</div><div class="sub" id="qCount"></div></div>
+<div class="row"><button class="secondary" id="prevBtn">Previous</button><button class="primary" id="nextBtn">Next question</button></div>
+<div class="row" style="margin-top:10px"><button class="ghost" id="point1">+1 point to <span id="pointName1">Player 1</span></button><button class="ghost" id="point2">+1 point to <span id="pointName2">Player 2</span></button></div>
+<button class="secondary wide" id="switchBtn">Pass the turn</button>
+</div>
+<div class="panel"><h2>Little extras</h2><p class="sub">Need a spontaneous moment? Try a playful challenge.</p><div class="question" style="min-height:120px"><div class="q-label">SURPRISE CHALLENGE</div><div class="q-text" id="challenge">Send your partner a voice note saying three things you adore about them.</div></div><button class="primary wide" id="challengeBtn">Give us another challenge</button><button class="ghost wide" id="leaveBtn">Leave this room</button></div>
+</section>
+<footer>Made for two people, wherever they are. ♥</footer>
+</main>
+<script>
+const SUPABASE_URL = "https://elkropujdgytevwwddvn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_-tGB67mYI9kmzD2q63qLwA_dxJy6JvN";
+const categories = {
+ "Funny Chaos":[
+ "What is the most ridiculous thing I do that you secretly find cute?",
+ "If our relationship were a reality show, what would it be called?",
+ "Which one of us would accidentally become famous, and for what?",
+ "What silly argument could we have for absolutely no reason?",
+ "Describe me using only the name of a food.",
+ "If we swapped bodies for a day, what would you do first?"
+ ],
+ "Couples' Battle":[
+ "Who is more likely to get lost even with Google Maps?",
+ "Who would survive longer on a reality TV island?",
+ "Who takes longer to get ready?",
+ "Guess my most-used phrase. Did you get it right?",
+ "Who is more stubborn when we disagree?",
+ "What would I choose for our perfect weekend?"
+ ],
+ "Flirt Zone":[
+ "What was the first thing about me that caught your attention?",
+ "Give me a new nickname and explain the inspiration.",
+ "What outfit of mine do you love most?",
+ "Describe our ideal date night in three tempting details.",
+ "Send me a 10-second voice note flirting with me.",
+ "What little thing I do gives you butterflies?"
+ ],
+ "Heart to Heart":[
+ "When do you feel most loved by me?",
+ "What is one memory of us you wish you could relive?",
+ "What is something you want us to experience together?",
+ "What helps you feel safe opening up to me?",
+ "What is one thing we have grown stronger at as a couple?",
+ "What small ritual should we start together?"
+ ]
+};
+const challenges=[
+"Send a voice note saying three things you adore about your partner.",
+"Look into the camera and give your best 10-second romantic speech.",
+"Recreate your partner's favourite emoji using only your face.",
+"Tell your partner one specific moment when you felt proud of them.",
+"Both of you choose a song that reminds you of the other and explain why.",
+"Give your partner a ridiculous but affectionate award title.",
+"Describe your partner as a holiday destination in 20 seconds.",
+"Share one tiny thing you want to do together on your next date."
+];
+const $=id=>document.getElementById(id);
+let client=null, channel=null, room="", playerId="", playerName="", isHost=false;
+let state={category:"Funny Chaos",indexes:{"Funny Chaos":0,"Couples' Battle":0,"Flirt Zone":0,"Heart to Heart":0},scores:{},players:[],turn:0,challengeIndex:0};
+function configured(){return !SUPABASE_URL.includes("PASTE_")&&!SUPABASE_ANON_KEY.includes("PASTE_")}
+function code(){return Array.from({length:6},()=> "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)]).join("")}
+function render(){
+ $("roomLabel").textContent=room;$("bigCode").textContent=room;
+ const players=state.players||[];const a=players[0],b=players[1];
+ $("p1Name").textContent=a?.name||playerName;$("p2Name").textContent=b?.name||"Waiting for partner";
+ $("p1Score").textContent=state.scores[a?.id||playerId]||0;$("p2Score").textContent=b?(state.scores[b.id]||0):0;
+ $("pointName1").textContent=a?.name||playerName;$("pointName2").textContent=b?.name||"Player 2";
+ $("turnText").textContent=players.length<2?"Waiting for your partner to join…":`It's ${players[state.turn%players.length]?.name||"your"}'s turn`;
+ $("categories").innerHTML=Object.keys(categories).map(c=>`<button class="pill ${state.category===c?'active':''}" data-cat="${c}">${c}</button>`).join("");
+ document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{state.category=b.dataset.cat;broadcast();render()});
+ const list=categories[state.category],idx=state.indexes[state.category]||0;
+ $("qCategory").textContent=state.category.toUpperCase();$("question").textContent=list[idx];$("qCount").textContent=`Question ${idx+1} of ${list.length}`;
+ $("challenge").textContent=challenges[state.challengeIndex%challenges.length];
+}
+function broadcast(){if(channel)channel.send({type:"broadcast",event:"state",payload:{state}})}
+async function connect(asHost,roomCode){
+ if(!configured()){alert("First connect the game to Supabase. Open the README in the project folder and follow the setup steps.");return}
+ if(!$("name").value.trim()){alert("Please enter your name first.");return}
+ playerName=$("name").value.trim();playerId=crypto.randomUUID();room=roomCode;isHost=asHost;
+ client=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+ channel=client.channel("us-two-"+room,{config:{broadcast:{self:false},presence:{key:playerId}}});
+ channel.on("broadcast",{event:"state"},({payload})=>{if(payload?.state){state=payload.state;render()}});
+ channel.on("broadcast",{event:"request_state"},()=>{if(isHost)broadcast()});
+ channel.on("presence",{event:"sync"},()=>{const pres=channel.presenceState();const ids=Object.keys(pres);if(ids.length>1&&state.players.length<2){const other=ids.find(id=>id!==playerId);if(other){const meta=pres[other]?.[0]||{};state.players.push({id:other,name:meta.name||"Partner"});broadcast();render()}}});
+ channel.subscribe(async status=>{
+  if(status==="SUBSCRIBED"){
+   $("connection").textContent="Connected";
+   await channel.track({name:playerName,joined_at:new Date().toISOString()});
+   if(asHost){state={category:"Funny Chaos",indexes:{"Funny Chaos":0,"Couples' Battle":0,"Flirt Zone":0,"Heart to Heart":0},scores:{[playerId]:0},players:[{id:playerId,name:playerName}],turn:0,challengeIndex:0};broadcast()}
+   else {channel.send({type:"broadcast",event:"request_state",payload:{}});setTimeout(()=>{if(!state.players.some(p=>p.id===playerId)){state.players.push({id:playerId,name:playerName});state.scores[playerId]=0;broadcast();render()}},1200)}
+   $("setup").classList.add("hidden");$("game").classList.remove("hidden");render();
+  }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){$("connection").textContent="Connection issue — check your setup"}
+ });
+}
+$("joinToggle").onclick=()=>{$("joinArea").classList.toggle("hidden")};
+$("createBtn").onclick=()=>connect(true,code());
+$("joinBtn").onclick=()=>{const c=$("roomInput").value.trim().toUpperCase();if(c.length!==6){alert("Enter the six-character room code.");return}connect(false,c)};
+$("nextBtn").onclick=()=>{const list=categories[state.category];state.indexes[state.category]=((state.indexes[state.category]||0)+1)%list.length;broadcast();render()};
+$("prevBtn").onclick=()=>{const list=categories[state.category];state.indexes[state.category]=((state.indexes[state.category]||0)-1+list.length)%list.length;broadcast();render()};
+$("point1").onclick=()=>{const id=state.players[0]?.id||playerId;state.scores[id]=(state.scores[id]||0)+1;broadcast();render()};
+$("point2").onclick=()=>{const id=state.players[1]?.id;if(!id){alert("Your partner needs to join first.");return}state.scores[id]=(state.scores[id]||0)+1;broadcast();render()};
+$("switchBtn").onclick=()=>{state.turn=(state.turn+1)%Math.max(1,state.players.length);broadcast();render()};
+$("challengeBtn").onclick=()=>{state.challengeIndex=(state.challengeIndex+1)%challenges.length;broadcast();render()};
+$("copyBtn").onclick=async()=>{try{await navigator.clipboard.writeText(room);$("copyBtn").textContent="Copied!"}catch(e){alert("Your room code is "+room)}};
+$("leaveBtn").onclick=async()=>{if(channel)await client.removeChannel(channel);channel=null;client=null;$("game").classList.add("hidden");$("setup").classList.remove("hidden");$("connection").textContent="Disconnected"};
+</script></body></html>
